@@ -1,1 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>غرفة حفلات أحلام لايف</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="room-body">
+    <div class="room-wrapper">
+        <!-- شريط علوي للغرفة -->
+        <div class="room-header">
+            <button onclick="window.location.href='index.html'" class="back-btn">🚪 مغادرة الغرفة</button>
+            <h2 id="roomTitle">جاري تحميل السهرة...</h2>
+            <div id="viewerCount" class="badge">👤 0</div>
+        </div>
+
+        <!-- منطقة تحدي الـ PK -->
+        <div id="pkSection" class="pk-container" style="display:none;">
+            <div class="pk-bar">
+                <div id="pkLeft" class="pk-progress team-a" style="width: 50%;"></div>
+                <div id="pkRight" class="pk-progress team-b" style="width: 50%;"></div>
+            </div>
+            <div class="pk-scores">
+                <span id="scoreTextA">الفريق أ: 0</span>
+                <span class="pk-vs">VS</span>
+                <span id="scoreTextB">الفريق ب: 0</span>
+            </div>
+            <div class="gift-actions">
+                <button onclick="sendGift('A', 50)">هدية للفريق أ (💎50)</button>
+                <button onclick="sendGift('B', 50)">هدية للفريق ب (💎50)</button>
+            </div>
+        </div>
+
+        <!-- مقاعد الصوت الستة الجماعية -->
+        <div class="mics-grid">
+            <div class="mic-slot active" id="mic-0">🎙️ <span class="mic-name">المالك</span></div>
+            <div class="mic-slot" id="mic-1">🔒 <span class="mic-name">مقعد فارغ</span></div>
+            <div class="mic-slot" id="mic-2">🔒 <span class="mic-name">مقعد فارغ</span></div>
+            <div class="mic-slot" id="mic-3">🔒 <span class="mic-name">مقعد فارغ</span></div>
+            <div class="mic-slot" id="mic-4">🔒 <span class="mic-name">مقعد فارغ</span></div>
+            <div class="mic-slot" id="mic-5">🔒 <span class="mic-name">مقعد فارغ</span></div>
+        </div>
+
+        <div class="control-actions">
+            <button onclick="startPK()" class="pk-btn">⚔️ بدء تحدي الـ PK لايف</button>
+            <div id="giftNotification" class="gift-banner"></div>
+        </div>
+
+        <!-- الشات الفوري المباشر -->
+        <div class="chat-box">
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="أرسل رسالة للجمهور...">
+                <button onclick="sendMsg()">إرسال</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room');
+        const userId = urlParams.get('id');
+        const username = urlParams.get('name');
+
+        const socket = io();
+
+        // الانضمام الفوري للغرفة
+        socket.emit('join-ahlam-room', { roomId, userId, username });
+
+        socket.on('user-joined', (data) => {
+            document.getElementById('viewerCount').innerText = `👤 ${data.users.length}`;
+            appendLog(`👋 انضم ${data.username} (ID: ${data.userId}) للغرفة`);
+            updateMics(data.users);
+        });
+
+        socket.on('user-left', (data) => {
+            document.getElementById('viewerCount').innerText = `👤 ${data.users.length}`;
+            updateMics(data.users);
+        });
+
+        function updateMics(users) {
+            for(let i=0; i<6; i++) {
+                const slot = document.getElementById(`mic-${i}`);
+                if(users[i]) {
+                    slot.innerHTML = `🎙️ <span class="mic-name" style="color:#ffd700">${users[i].username}</span>`;
+                    slot.classList.add('active');
+                } else {
+                    slot.innerHTML = `🔒 <span class="mic-name">مقعد فارغ</span>`;
+                    slot.classList.remove('active');
+                }
+            }
+        }
+
+        // التعامل مع الشات
+        function sendMsg() {
+            const input = document.getElementById('chatInput');
+            if(input.value.trim()) {
+                socket.emit('send-room-msg', input.value.trim());
+                input.value = '';
+            }
+        }
+
+        socket.on('receive-room-msg', (data) => {
+            const box = document.getElementById('chatMessages');
+            box.innerHTML += `<div><strong>[${data.username}]:</strong> ${data.text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        });
+
+        // تشغيل نظام الـ PK
+        function startPK() { socket.emit('start-pk-challenge'); }
+        socket.on('pk-started', () => { document.getElementById('pkSection').style.display = 'block'; });
+
+        function sendGift(team, points) {
+            socket.emit('send-gift', { giftName: "سيارة الأحلام الفاخرة 🏎️", points, team });
+        }
+
+        socket.on('pk-updated', (pkData) => {
+            const total = pkData.scoreA + pkData.scoreB || 1;
+            const pctA = (pkData.scoreA / total) * 100;
+            document.getElementById('pkLeft').style.width = `${pctA}%`;
+            document.getElementById('pkRight').style.width = `${100 - pctA}%`;
+            document.getElementById('scoreTextA').innerText = `الفريق أ: ${pkData.scoreA}`;
+            document.getElementById('scoreTextB').innerText = `الفريق ب: ${pkData.scoreB}`;
+        });
+
+        socket.on('gift-animated', (data) => {
+            const banner = document.getElementById('giftNotification');
+            banner.innerText = `🎁 قام المتابع [${data.username}] بإرسال ${data.giftName}!`;
+            setTimeout(() => { banner.innerText = ''; }, 4000);
+        });
+
+        function appendLog(text) {
+            const box = document.getElementById('chatMessages');
+            box.innerHTML += `<div class="sys-msg">${text}</div>`;
+        }
+    </script>
+</body>
+</html>
 
