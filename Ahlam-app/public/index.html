@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تطبيق Ahlam | عالمك الافتراضي</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1 class="logo">AHLAM <span>أحلام</span></h1>
+            <p>منصة الغرف الصوتية والتحديات الفورية</p>
+        </header>
+
+        <div class="login-box">
+            <h3>إنشاء الملف الشخصي الفوري</h3>
+            <input type="text" id="userId" placeholder="أدخل معرّف الحساب (ID)...">
+            <input type="text" id="username" placeholder="أدخل اسمك المستعار...">
+            <p class="hint">* سيتم حفظ البيانات للتنقل بها داخل الغرف</p>
+        </div>
+
+        <div class="rooms-section">
+            <h3>🔥 الغرف الصوتية النشطة الآن</h3>
+            <div id="roomsList" class="rooms-grid">
+                <!-- يتم تعبئتها ديناميكياً -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        socket.on('update-room-list', (rooms) => {
+            const list = document.getElementById('roomsList');
+            list.innerHTML = '';
+            for (let id in rooms) {
+                list.innerHTML += `
+                    <div class="room-card" onclick="goToRoom('${id}')">
+                        <div class="room-icon">🎙️</div>
+                        <h4>${rooms[id].name}</h4>
+                        <p>المتصلين: ${rooms[id].users.length} 👤</p>
+                        <button class="join-btn">دخول الحفلة</button>
+                    </div>
+                `;
+            }
+        });
+
+        function goToRoom(roomId) {
+            const userId = document.getElementById('userId').value.trim();
+            const username = document.getElementById('username').value.trim();
+            if(!userId || !username) return alert('الرجاء إدخال الـ ID والاسم أولاً!');
+            
+            // الانتقال لصفحة الغرفة وتمرير البيانات عبر الروابط
+            window.location.href = `room.html?room=${roomId}&id=${userId}&name=${encodeURIComponent(username)}`;
+        }
+    </script>
+</body>
+</html>
