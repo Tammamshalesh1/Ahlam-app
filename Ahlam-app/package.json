@@ -1,0 +1,13 @@
+{
+  "name": "ahlam-live-app",
+  "version": "1.0.0",
+  "description": "تطبيق أحلام لغرف الحفلات الصوتية والدردشة اللايف وتحديات الـ PK",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
